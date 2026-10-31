@@ -35,7 +35,8 @@ impl Ui {
         .areas(area);
         draw_header(frame, header, app);
         let [left, right] =
-            Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)]).areas(main);
+            Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
+                .areas(main);
         self.draw_left(frame, left, app);
         draw_details(frame, right, app);
         draw_output(frame, output, app);
@@ -51,22 +52,33 @@ impl Ui {
         let block = Block::new().borders(Borders::TOP | Borders::BOTTOM);
         let inner = block.inner(area);
         frame.render_widget(block, area);
-        let [search, table] = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(inner);
+        let [search, table] =
+            Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(inner);
         let [field, counter] =
-            Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)]).areas(search);
+            Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)])
+                .areas(search);
         let label = app.search_label();
         let query = Span::styled(
             app.search.clone(),
             Style::new().add_modifier(Modifier::ITALIC | Modifier::UNDERLINED),
         );
         frame.render_widget(
-            Paragraph::new(Line::from(vec![Span::styled(label.clone(), Style::new().fg(TITLE)), query])),
+            Paragraph::new(Line::from(vec![
+                Span::styled(label.clone(), Style::new().fg(TITLE)),
+                query,
+            ])),
             field,
         );
-        frame.render_widget(Paragraph::new(app.counter()).alignment(Alignment::Right), counter);
+        frame.render_widget(
+            Paragraph::new(app.counter()).alignment(Alignment::Right),
+            counter,
+        );
         if app.mode == Mode::Search {
             let x = field.x + (label.chars().count() + app.search.chars().count()) as u16;
-            frame.set_cursor_position(Position::new(x.min(field.right().saturating_sub(1)), field.y));
+            frame.set_cursor_position(Position::new(
+                x.min(field.right().saturating_sub(1)),
+                field.y,
+            ));
         }
         self.draw_table(frame, table, app);
     }
@@ -92,18 +104,32 @@ impl Ui {
             SortMode::None => {}
         }
         let window = visible.iter().skip(self.offset).take(height);
-        let name_width = visible.iter().map(|p| p.name.chars().count()).max().unwrap_or(4).clamp(6, 32);
+        let name_width = visible
+            .iter()
+            .map(|p| p.name.chars().count())
+            .max()
+            .unwrap_or(4)
+            .clamp(6, 32);
         let rows: Vec<Row> = window
             .map(|p| {
-                let name_style = if p.installed { Style::new().fg(Color::Green) } else { Style::new() };
-                let version_style =
-                    if p.installed && p.upgradable { Style::new().fg(ORANGE) } else { Style::new() };
+                let name_style = if p.installed {
+                    Style::new().fg(Color::Green)
+                } else {
+                    Style::new()
+                };
+                let version_style = if p.installed && p.upgradable {
+                    Style::new().fg(ORANGE)
+                } else {
+                    Style::new()
+                };
                 Row::new(vec![
                     Cell::from(p.repo.tag()),
                     Cell::from(Span::styled(truncate(&p.name, name_width), name_style)),
                     Cell::from(Span::styled(truncate(&p.version, 15), version_style)),
                     Cell::from(p.description.clone()),
-                    Cell::from(Line::from(human_size(p.installed_size)).alignment(Alignment::Right)),
+                    Cell::from(
+                        Line::from(human_size(p.installed_size)).alignment(Alignment::Right),
+                    ),
                 ])
             })
             .collect();
@@ -153,14 +179,22 @@ fn draw_details(frame: &mut Frame, area: Rect, app: &App) {
     let pkg = app.selected();
     let vulns = pkg.and_then(|p| app.vulns.get(&p.name));
     let lines = details::details_lines(pkg, vulns);
-    frame.render_widget(Paragraph::new(lines).block(block).wrap(Wrap { trim: false }), area);
+    frame.render_widget(
+        Paragraph::new(lines)
+            .block(block)
+            .wrap(Wrap { trim: false }),
+        area,
+    );
 }
 
 fn draw_output(frame: &mut Frame, area: Rect, app: &App) {
     let block = Block::bordered().title(Span::styled(" Output ", Style::new().fg(TITLE)));
     let height = block.inner(area).height as usize;
     let start = app.output.len().saturating_sub(height);
-    let lines: Vec<Line> = app.output[start..].iter().map(|l| Line::from(l.as_str())).collect();
+    let lines: Vec<Line> = app.output[start..]
+        .iter()
+        .map(|l| Line::from(l.as_str()))
+        .collect();
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
@@ -175,9 +209,15 @@ fn draw_legend(frame: &mut Frame, area: Rect, app: &App) {
         } else {
             Style::new()
         };
-        spans.push(Span::styled(format!("[{}] {}", entry.key, entry.name), style));
+        spans.push(Span::styled(
+            format!("[{}] {}", entry.key, entry.name),
+            style,
+        ));
     }
-    frame.render_widget(Paragraph::new(Line::from(spans)).alignment(Alignment::Center), area);
+    frame.render_widget(
+        Paragraph::new(Line::from(spans)).alignment(Alignment::Center),
+        area,
+    );
 }
 
 /// A rectangle of the given size centered in `area`, clamped to fit.
@@ -194,10 +234,16 @@ fn centered(area: Rect, width: u16, height: u16) -> Rect {
 
 fn help_lines() -> Vec<Line<'static>> {
     let section = |t: &'static str| {
-        Line::from(Span::styled(t, Style::new().fg(Color::Green).add_modifier(Modifier::BOLD)))
+        Line::from(Span::styled(
+            t,
+            Style::new().fg(Color::Green).add_modifier(Modifier::BOLD),
+        ))
     };
     let key = |k: &'static str, d: &'static str| {
-        Line::from(vec![Span::styled(format!("  {k:<12}"), Style::new().fg(Color::Yellow)), Span::raw(d)])
+        Line::from(vec![
+            Span::styled(format!("  {k:<12}"), Style::new().fg(Color::Yellow)),
+            Span::raw(d),
+        ])
     };
     let mut lines = vec![
         section("NAVIGATION"),
@@ -225,7 +271,10 @@ fn help_lines() -> Vec<Line<'static>> {
         key("Ctrl+U", "Upgrade all"),
     ];
     lines.push(Line::default());
-    lines.push(Line::from(Span::styled("Press any key to close", Style::new().add_modifier(Modifier::DIM))));
+    lines.push(Line::from(Span::styled(
+        "Press any key to close",
+        Style::new().add_modifier(Modifier::DIM),
+    )));
     lines
 }
 
@@ -233,7 +282,9 @@ fn draw_help(frame: &mut Frame, area: Rect) {
     let lines = help_lines();
     let popup = centered(area, 55, lines.len() as u16 + 4);
     frame.render_widget(Clear, popup);
-    let block = Block::bordered().title(" Help ").title_alignment(Alignment::Center);
+    let block = Block::bordered()
+        .title(" Help ")
+        .title_alignment(Alignment::Center);
     frame.render_widget(
         Paragraph::new(lines).block(block.padding(ratatui::widgets::Padding::horizontal(1))),
         popup,
@@ -252,13 +303,20 @@ fn draw_confirm(frame: &mut Frame, area: Rect, confirm: &Confirm) {
     frame.render_widget(Clear, popup);
     let button = |label: &'static str, active: bool| {
         let style = if active {
-            Style::new().bg(Color::Green).fg(Color::Black).add_modifier(Modifier::BOLD)
+            Style::new()
+                .bg(Color::Green)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::new()
         };
         Span::styled(label, style)
     };
-    let mut lines: Vec<Line> = confirm.message.lines().map(|l| Line::from(l.to_string())).collect();
+    let mut lines: Vec<Line> = confirm
+        .message
+        .lines()
+        .map(|l| Line::from(l.to_string()))
+        .collect();
     lines.push(Line::default());
     lines.push(Line::from(vec![
         button("  Confirm  ", confirm.confirm_selected),
@@ -267,7 +325,10 @@ fn draw_confirm(frame: &mut Frame, area: Rect, confirm: &Confirm) {
     ]));
     let block = Block::bordered().padding(ratatui::widgets::Padding::uniform(1));
     frame.render_widget(
-        Paragraph::new(lines).block(block).alignment(Alignment::Center).wrap(Wrap { trim: false }),
+        Paragraph::new(lines)
+            .block(block)
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: false }),
         popup,
     );
 }
@@ -320,7 +381,8 @@ mod tests {
 
     fn find(t: &Terminal<TestBackend>, needle: &str) -> Option<(u16, u16)> {
         screen(t).lines().enumerate().find_map(|(y, line)| {
-            line.find(needle).map(|byte| (line[..byte].chars().count() as u16, y as u16))
+            line.find(needle)
+                .map(|byte| (line[..byte].chars().count() as u16, y as u16))
         })
     }
 
@@ -422,7 +484,13 @@ mod tests {
         let mut app = App::new(sample());
         app.handle_key(key('?'));
         let s = screen(&render(&mut app, &mut Ui::default(), 140, 45));
-        for expected in ["NAVIGATION", "FILTERS", "ACTIONS", "Toggle upgradable", "Press any key to close"] {
+        for expected in [
+            "NAVIGATION",
+            "FILTERS",
+            "ACTIONS",
+            "Toggle upgradable",
+            "Press any key to close",
+        ] {
             assert!(s.contains(expected), "missing {expected:?} in\n{s}");
         }
         assert!(!s.contains("WORLD FILE"));
@@ -434,18 +502,27 @@ mod tests {
         let mut app = App::new(sample());
         app.handle_key(key('i'));
         let s = screen(&render(&mut app, &mut Ui::default(), 140, 40));
-        assert!(s.contains("Are you sure you want to install the package: curl?"), "{s}");
+        assert!(
+            s.contains("Are you sure you want to install the package: curl?"),
+            "{s}"
+        );
         assert!(s.contains("Confirm"));
         assert!(s.contains("Cancel"));
     }
 
     #[test]
     fn scrolls_to_keep_selection_visible_and_sets_page_size() {
-        let pkgs: Vec<Package> = (0..200).map(|i| pkg(&format!("pkg{i:03}"), false)).collect();
+        let pkgs: Vec<Package> = (0..200)
+            .map(|i| pkg(&format!("pkg{i:03}"), false))
+            .collect();
         let mut app = App::new(pkgs);
         let mut ui = Ui::default();
         render(&mut app, &mut ui, 140, 40);
-        assert!(app.page_size > 5 && app.page_size < 40, "page size {}", app.page_size);
+        assert!(
+            app.page_size > 5 && app.page_size < 40,
+            "page size {}",
+            app.page_size
+        );
         for _ in 0..150 {
             app.handle_key(key('j'));
         }

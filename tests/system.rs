@@ -21,7 +21,10 @@ fn loads_real_catalog() {
     assert!(!installed.is_empty(), "some packages are installed");
     assert!(installed.iter().all(|p| p.installed_version.is_some()));
     // apk-tools itself must be installed for this test to run at all.
-    let apk_tools = pkgs.iter().find(|p| p.name == "apk-tools").expect("apk-tools present");
+    let apk_tools = pkgs
+        .iter()
+        .find(|p| p.name == "apk-tools")
+        .expect("apk-tools present");
     assert!(apk_tools.installed);
     assert!(!apk_tools.description.is_empty());
     // Every world entry that is installed is marked explicit.
@@ -43,7 +46,13 @@ fn reads_real_apk_version() {
 
 #[test]
 fn binary_prints_version() {
-    let out = std::process::Command::new(env!("CARGO_BIN_EXE_bapk")).arg("--version").output().unwrap();
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_bapk"))
+        .arg("--version")
+        .output()
+        .unwrap();
     assert!(out.status.success());
-    assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), format!("Bold APK {}", env!("CARGO_PKG_VERSION")));
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout).trim(),
+        format!("Bold APK {}", env!("CARGO_PKG_VERSION"))
+    );
 }

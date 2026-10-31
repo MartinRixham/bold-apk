@@ -27,8 +27,7 @@ pub struct QueryRecord {
 }
 
 /// The `--fields` argument bapk requests from `apk query`.
-pub const QUERY_FIELDS: &str =
-    "name,version,description,url,license,origin,maintainer,file-size,installed-size,depends,repositories";
+pub const QUERY_FIELDS: &str = "name,version,description,url,license,origin,maintainer,file-size,installed-size,depends,repositories";
 
 /// Parses the JSON array printed by `apk query --format json`.
 pub fn parse_records(json: &str) -> Result<Vec<QueryRecord>> {
@@ -54,7 +53,9 @@ pub fn merge(
     let mut seen = HashSet::new();
     let mut packages = Vec::new();
     let available_names: HashSet<String> = available.iter().map(|r| r.name.clone()).collect();
-    let local = installed.into_iter().filter(|r| !available_names.contains(&r.name));
+    let local = installed
+        .into_iter()
+        .filter(|r| !available_names.contains(&r.name));
     for record in available.into_iter().chain(local) {
         if !seen.insert(record.name.clone()) {
             continue;
@@ -183,7 +184,12 @@ mod tests {
     fn merge_detects_tuis() {
         let mut r = rec("lazygit", "1", MAIN);
         r.description = "Simple terminal UI for git commands".into();
-        let pkgs = merge(vec![r, rec("curl", "1", MAIN)], vec![], &HashSet::new(), &[]);
+        let pkgs = merge(
+            vec![r, rec("curl", "1", MAIN)],
+            vec![],
+            &HashSet::new(),
+            &[],
+        );
         assert!(pkgs[1].tui);
         assert!(!pkgs[0].tui);
     }
@@ -220,7 +226,12 @@ mod tests {
     fn merge_includes_installed_packages_missing_from_repositories() {
         let mut local = rec("mytool", "0.1-r0", DB);
         local.description = "home built".into();
-        let pkgs = merge(vec![rec("curl", "8.0-r0", MAIN)], vec![local], &HashSet::new(), &[]);
+        let pkgs = merge(
+            vec![rec("curl", "8.0-r0", MAIN)],
+            vec![local],
+            &HashSet::new(),
+            &[],
+        );
         assert_eq!(pkgs.len(), 2);
         let m = pkgs.iter().find(|p| p.name == "mytool").unwrap();
         assert_eq!(m.repo, Repo::Local);
@@ -233,7 +244,11 @@ mod tests {
     #[test]
     fn merge_sorts_by_name_and_dedupes() {
         let pkgs = merge(
-            vec![rec("zsh", "1", MAIN), rec("bash", "1", MAIN), rec("bash", "2", MAIN)],
+            vec![
+                rec("zsh", "1", MAIN),
+                rec("bash", "1", MAIN),
+                rec("bash", "2", MAIN),
+            ],
             vec![rec("mytool", "1", DB)],
             &HashSet::new(),
             &[],

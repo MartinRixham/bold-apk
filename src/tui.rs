@@ -7,13 +7,67 @@
 
 /// Well-known TUI applications whose descriptions don't identify them as such.
 const KNOWN: &[&str] = &[
-    "abook", "aerc", "alpine", "alsamixer", "aptitude", "atop", "bmon", "bottom", "btop",
-    "calcurse", "cbonsai", "ccmake", "cmatrix", "cmus", "dialog", "dvtm", "elinks", "emacs-nox",
-    "gdu", "gitui", "glances", "gnu-games", "helix", "htop", "iftop", "iotop-c", "iptraf-ng",
-    "irssi", "kakoune", "lnav", "lynx", "mc", "mcabber", "micro", "minicom", "mutt", "nano",
-    "ncdu", "neomutt", "neovim", "nethack", "nethogs", "newsboat", "nmon", "nmtui", "nnn",
-    "nvtop", "powertop", "ranger", "rtorrent", "sc", "screen", "slrn", "tig", "tin", "tmux",
-    "vim", "vis", "w3m", "yazi", "zellij",
+    "abook",
+    "aerc",
+    "alpine",
+    "alsamixer",
+    "aptitude",
+    "atop",
+    "bmon",
+    "bottom",
+    "btop",
+    "calcurse",
+    "cbonsai",
+    "ccmake",
+    "cmatrix",
+    "cmus",
+    "dialog",
+    "dvtm",
+    "elinks",
+    "emacs-nox",
+    "gdu",
+    "gitui",
+    "glances",
+    "gnu-games",
+    "helix",
+    "htop",
+    "iftop",
+    "iotop-c",
+    "iptraf-ng",
+    "irssi",
+    "kakoune",
+    "lnav",
+    "lynx",
+    "mc",
+    "mcabber",
+    "micro",
+    "minicom",
+    "mutt",
+    "nano",
+    "ncdu",
+    "neomutt",
+    "neovim",
+    "nethack",
+    "nethogs",
+    "newsboat",
+    "nmon",
+    "nmtui",
+    "nnn",
+    "nvtop",
+    "powertop",
+    "ranger",
+    "rtorrent",
+    "sc",
+    "screen",
+    "slrn",
+    "tig",
+    "tin",
+    "tmux",
+    "vim",
+    "vis",
+    "w3m",
+    "yazi",
+    "zellij",
 ];
 
 /// Phrases in a description that mark a TUI (matched case-insensitively on word boundaries).
@@ -35,13 +89,29 @@ const KEYWORDS: &[&str] = &[
 
 /// Name suffixes of subpackages that never contain the program itself.
 const SUBPACKAGE_SUFFIXES: &[&str] = &[
-    "-doc", "-dev", "-dbg", "-static", "-libs", "-lang", "-openrc", "-systemd", "-pyc",
-    "-common", "-completion", "-bash-completion", "-zsh-completion", "-fish-completion",
-    "-nu-completion", "-vim", "-lisp",
+    "-doc",
+    "-dev",
+    "-dbg",
+    "-static",
+    "-libs",
+    "-lang",
+    "-openrc",
+    "-systemd",
+    "-pyc",
+    "-common",
+    "-completion",
+    "-bash-completion",
+    "-zsh-completion",
+    "-fish-completion",
+    "-nu-completion",
+    "-vim",
+    "-lisp",
 ];
 
 /// Name prefixes of language bindings and libraries.
-const LIBRARY_PREFIXES: &[&str] = &["lib", "py3-", "perl-", "lua", "ocaml-", "ruby-", "php", "rust-", "go-"];
+const LIBRARY_PREFIXES: &[&str] = &[
+    "lib", "py3-", "perl-", "lua", "ocaml-", "ruby-", "php", "rust-", "go-",
+];
 
 /// Returns true when the package looks like a terminal user interface application.
 pub fn is_tui(name: &str, description: &str) -> bool {
@@ -54,7 +124,10 @@ pub fn is_tui(name: &str, description: &str) -> bool {
         return true;
     }
     let desc = description.to_lowercase();
-    if ["library", "bindings", "replacement for"].iter().any(|w| desc.contains(w)) {
+    if ["library", "bindings", "replacement for"]
+        .iter()
+        .any(|w| desc.contains(w))
+    {
         return false;
     }
     name.split(['-', '_']).any(|part| part == "tui")
@@ -81,7 +154,10 @@ mod tests {
         assert!(is_tui("gpg-tui", "Terminal user interface for GnuPG"));
         assert!(is_tui("cmus", "feature-rich ncurses-based music player"));
         assert!(is_tui("cfdisk", "Curses based partition table manipulator"));
-        assert!(is_tui("micro", "Modern and intuitive terminal-based text editor"));
+        assert!(is_tui(
+            "micro",
+            "Modern and intuitive terminal-based text editor"
+        ));
         assert!(is_tui("mtr", "Full screen ncurses traceroute tool"));
     }
 
@@ -93,7 +169,10 @@ mod tests {
 
     #[test]
     fn tui_in_name() {
-        assert!(is_tui("networkmanager-tui", "NetworkManager text interface"));
+        assert!(is_tui(
+            "networkmanager-tui",
+            "NetworkManager text interface"
+        ));
         assert!(is_tui("jj_tui", "Jujutsu client"));
         assert!(!is_tui("tuigreet", "Graphical console greeter"));
     }
@@ -101,24 +180,45 @@ mod tests {
     #[test]
     fn well_known_tuis() {
         assert!(is_tui("htop", "Interactive process viewer"));
-        assert!(is_tui("tmux", "Tool to control multiple terminals from a single terminal"));
+        assert!(is_tui(
+            "tmux",
+            "Tool to control multiple terminals from a single terminal"
+        ));
         assert!(is_tui("vim", "Improved vi-style text editor"));
     }
 
     #[test]
     fn non_tuis() {
         assert!(!is_tui("curl", "URL retrieval utility and library"));
-        assert!(!is_tui("zsh", "Very advanced and programmable command interpreter (shell)"));
+        assert!(!is_tui(
+            "zsh",
+            "Very advanced and programmable command interpreter (shell)"
+        ));
     }
 
     #[test]
     fn excludes_subpackages_and_libraries() {
-        assert!(!is_tui("gpg-tui-bash-completion", "Bash completions for gpg-tui"));
-        assert!(!is_tui("htop-doc", "Interactive process viewer (documentation)"));
-        assert!(!is_tui("s-tui-pyc", "Precompiled Python bytecode for s-tui"));
+        assert!(!is_tui(
+            "gpg-tui-bash-completion",
+            "Bash completions for gpg-tui"
+        ));
+        assert!(!is_tui(
+            "htop-doc",
+            "Interactive process viewer (documentation)"
+        ));
+        assert!(!is_tui(
+            "s-tui-pyc",
+            "Precompiled Python bytecode for s-tui"
+        ));
         assert!(!is_tui("ocaml-curses", "OCaml bindings for ncurses"));
-        assert!(!is_tui("notcurses", "blingful character graphics and TUI library"));
-        assert!(!is_tui("editline", "readline() replacement for UNIX without termcap (ncurses)"));
+        assert!(!is_tui(
+            "notcurses",
+            "blingful character graphics and TUI library"
+        ));
+        assert!(!is_tui(
+            "editline",
+            "readline() replacement for UNIX without termcap (ncurses)"
+        ));
         assert!(!is_tui("libgnt", "ncurses toolkit"));
     }
 }

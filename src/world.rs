@@ -42,7 +42,10 @@ mod tests {
     #[test]
     fn strips_version_constraints_and_tags() {
         let text = "bash>=5.0 foo=1.2-r0 bar<2 baz~1.1 qux@testing zed><1.0 a>1";
-        assert_eq!(parse_world(text), vec!["bash", "foo", "bar", "baz", "qux", "zed", "a"]);
+        assert_eq!(
+            parse_world(text),
+            vec!["bash", "foo", "bar", "baz", "qux", "zed", "a"]
+        );
     }
 
     #[test]
@@ -52,7 +55,9 @@ mod tests {
 
     #[test]
     fn removes_duplicates_preserving_order() {
-        assert_eq!(parse_world("git curl git bash curl"), vec!["git", "curl", "bash"]);
+        assert_eq!(
+            parse_world("git curl git bash curl"),
+            vec!["git", "curl", "bash"]
+        );
     }
-
 }

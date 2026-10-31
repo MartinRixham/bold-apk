@@ -7,10 +7,16 @@ use std::cmp::Ordering;
 enum Token {
     /// Numeric component. `fraction` is set when a non-leading component starts
     /// with `0`, in which case apk compares it as a string.
-    Digit { text: String, fraction: bool },
+    Digit {
+        text: String,
+        fraction: bool,
+    },
     Letter(char),
     /// `_suffix[N]`; rank < 0 means pre-release, > 0 post-release.
-    Suffix { rank: i8, number: u64 },
+    Suffix {
+        rank: i8,
+        number: u64,
+    },
     Revision(u64),
     End,
 }
@@ -74,7 +80,11 @@ fn tokenize(version: &str) -> Vec<Token> {
             let num = take_while(&chars, &mut i, |c| c.is_ascii_digit());
             tokens.push(Token::Suffix {
                 rank: suffix_rank(&name),
-                number: if num.is_empty() { 0 } else { parse_number(&num) },
+                number: if num.is_empty() {
+                    0
+                } else {
+                    parse_number(&num)
+                },
             });
         } else if c == '-' && chars.get(i + 1) == Some(&'r') {
             i += 2;
@@ -107,13 +117,26 @@ pub fn compare(a: &str, b: &str) -> Ordering {
         let ord = match (x, y) {
             (Token::End, Token::End) => return Ordering::Equal,
             (
-                Token::Digit { text: a, fraction: af },
-                Token::Digit { text: b, fraction: bf },
+                Token::Digit {
+                    text: a,
+                    fraction: af,
+                },
+                Token::Digit {
+                    text: b,
+                    fraction: bf,
+                },
             ) => compare_digits(a, *af, b, *bf),
             (Token::Letter(a), Token::Letter(b)) => a.cmp(b),
-            (Token::Suffix { rank: ra, number: na }, Token::Suffix { rank: rb, number: nb }) => {
-                ra.cmp(rb).then(na.cmp(nb))
-            }
+            (
+                Token::Suffix {
+                    rank: ra,
+                    number: na,
+                },
+                Token::Suffix {
+                    rank: rb,
+                    number: nb,
+                },
+            ) => ra.cmp(rb).then(na.cmp(nb)),
             (Token::Revision(a), Token::Revision(b)) => a.cmp(b),
             (Token::Suffix { rank, .. }, _) if *rank < 0 => Ordering::Less,
             (_, Token::Suffix { rank, .. }) if *rank < 0 => Ordering::Greater,

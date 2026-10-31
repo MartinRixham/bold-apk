@@ -6,7 +6,7 @@ use clap::Parser;
 #[command(
     name = "bapk",
     about = "Bold APK - A TUI for Alpine Linux apk package management",
-    disable_version_flag = true,
+    disable_version_flag = true
 )]
 pub struct Cli {
     /// Show version information
@@ -47,6 +47,9 @@ mod tests {
 
     #[test]
     fn version_text() {
-        assert_eq!(version_string(), format!("Bold APK {}", env!("CARGO_PKG_VERSION")));
+        assert_eq!(
+            version_string(),
+            format!("Bold APK {}", env!("CARGO_PKG_VERSION"))
+        );
     }
 }

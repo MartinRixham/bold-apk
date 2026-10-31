@@ -67,7 +67,10 @@ impl SecDb {
             .filter(|(fixed_in, _)| fixed_in != "0")
             .filter(|(fixed_in, _)| version::compare(version, fixed_in).is_lt())
             .flat_map(|(fixed_in, ids)| {
-                ids.iter().map(move |id| Vulnerability { id: id.clone(), fixed_in: fixed_in.clone() })
+                ids.iter().map(move |id| Vulnerability {
+                    id: id.clone(),
+                    fixed_in: fixed_in.clone(),
+                })
             })
             .collect()
     }
@@ -120,7 +123,10 @@ mod tests {
     fn old_version_has_open_vulnerabilities() {
         let db = SecDb::parse(MAIN).unwrap();
         let v = db.vulnerabilities("openssl", "3.0.0-r0");
-        assert_eq!(ids(&v), vec!["CVE-2021-4044", "CVE-2025-9230", "CVE-2025-9231"]);
+        assert_eq!(
+            ids(&v),
+            vec!["CVE-2021-4044", "CVE-2025-9230", "CVE-2025-9231"]
+        );
         let fix = v.iter().find(|v| v.id == "CVE-2021-4044").unwrap();
         assert_eq!(fix.fixed_in, "3.0.1-r0");
     }

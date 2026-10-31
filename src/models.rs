@@ -18,7 +18,11 @@ impl Repo {
         let Some(url) = repos.iter().find(|r| !r.ends_with("lib/apk/db/installed")) else {
             return Repo::Local;
         };
-        let segment = url.trim_end_matches('/').rsplit('/').next().unwrap_or_default();
+        let segment = url
+            .trim_end_matches('/')
+            .rsplit('/')
+            .next()
+            .unwrap_or_default();
         match segment {
             "main" => Repo::Main,
             "community" => Repo::Community,
@@ -150,7 +154,9 @@ mod tests {
 
     #[test]
     fn repo_from_main_url() {
-        let r = Repo::from_repositories(&repos(&["https://dl-cdn.alpinelinux.org/alpine/v3.24/main"]));
+        let r = Repo::from_repositories(&repos(&[
+            "https://dl-cdn.alpinelinux.org/alpine/v3.24/main",
+        ]));
         assert_eq!(r, Repo::Main);
     }
 
@@ -177,7 +183,10 @@ mod tests {
 
     #[test]
     fn repo_only_installed_database_is_local() {
-        assert_eq!(Repo::from_repositories(&repos(&["lib/apk/db/installed"])), Repo::Local);
+        assert_eq!(
+            Repo::from_repositories(&repos(&["lib/apk/db/installed"])),
+            Repo::Local
+        );
         assert_eq!(Repo::from_repositories(&[]), Repo::Local);
     }
 
@@ -210,7 +219,11 @@ mod tests {
     }
 
     fn pkg() -> Package {
-        Package { name: "x".into(), repo: Repo::Main, ..Default::default() }
+        Package {
+            name: "x".into(),
+            repo: Repo::Main,
+            ..Default::default()
+        }
     }
 
     #[test]

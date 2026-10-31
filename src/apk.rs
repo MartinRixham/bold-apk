@@ -55,14 +55,17 @@ impl Privilege {
 
     /// Command that succeeds only if privileged commands can run without a prompt.
     pub fn check_argv(&self) -> Option<Vec<String>> {
-        self.tool().map(|tool| vec![tool.into(), "-n".into(), "true".into()])
+        self.tool()
+            .map(|tool| vec![tool.into(), "-n".into(), "true".into()])
     }
 }
 
 /// The current effective user id.
 pub fn current_uid() -> u32 {
     use std::os::unix::fs::MetadataExt;
-    std::fs::metadata("/proc/self").map(|m| m.uid()).unwrap_or(u32::MAX)
+    std::fs::metadata("/proc/self")
+        .map(|m| m.uid())
+        .unwrap_or(u32::MAX)
 }
 
 /// True if `program` is found in PATH.
@@ -126,7 +129,9 @@ impl Operation {
     /// What the operation acts on, e.g. a package name.
     pub fn subject(&self) -> String {
         match self {
-            Operation::Install(name) | Operation::Remove(name) | Operation::Upgrade(name) => name.clone(),
+            Operation::Install(name) | Operation::Remove(name) | Operation::Upgrade(name) => {
+                name.clone()
+            }
             Operation::UpgradeAll => "all packages".into(),
             Operation::UpdateIndex => "package indexes".into(),
         }
@@ -137,7 +142,12 @@ impl Operation {
 pub fn apk_version(runner: &dyn Runner) -> Result<String> {
     let out = runner.capture(&["apk".to_string(), "--version".to_string()])?;
     let first = out.lines().next().unwrap_or_default();
-    Ok(first.split(',').next().unwrap_or_default().trim().to_string())
+    Ok(first
+        .split(',')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string())
 }
 
 fn query(runner: &dyn Runner, filter: Option<&str>) -> Result<Vec<catalog::QueryRecord>> {
@@ -152,8 +162,10 @@ fn query(runner: &dyn Runner, filter: Option<&str>) -> Result<Vec<catalog::Query
 pub fn load_catalog(runner: &dyn Runner, world: &[String]) -> Result<Vec<Package>> {
     let available = query(runner, None)?;
     let installed = query(runner, Some("--installed"))?;
-    let upgradable: HashSet<String> =
-        query(runner, Some("--upgradable"))?.into_iter().map(|r| r.name).collect();
+    let upgradable: HashSet<String> = query(runner, Some("--upgradable"))?
+        .into_iter()
+        .map(|r| r.name)
+        .collect();
     Ok(catalog::merge(available, installed, &upgradable, world))
 }
 
@@ -182,10 +194,22 @@ mod tests {
     fn wrap_commands() {
         let cmd = v(&["apk", "add", "curl"]);
         assert_eq!(Privilege::Root.wrap(cmd.clone(), false), cmd);
-        assert_eq!(Privilege::Doas.wrap(cmd.clone(), false), v(&["doas", "-n", "apk", "add", "curl"]));
-        assert_eq!(Privilege::Sudo.wrap(cmd.clone(), false), v(&["sudo", "-n", "apk", "add", "curl"]));
-        assert_eq!(Privilege::Doas.wrap(cmd.clone(), true), v(&["doas", "apk", "add", "curl"]));
-        assert_eq!(Privilege::Sudo.wrap(cmd.clone(), true), v(&["sudo", "apk", "add", "curl"]));
+        assert_eq!(
+            Privilege::Doas.wrap(cmd.clone(), false),
+            v(&["doas", "-n", "apk", "add", "curl"])
+        );
+        assert_eq!(
+            Privilege::Sudo.wrap(cmd.clone(), false),
+            v(&["sudo", "-n", "apk", "add", "curl"])
+        );
+        assert_eq!(
+            Privilege::Doas.wrap(cmd.clone(), true),
+            v(&["doas", "apk", "add", "curl"])
+        );
+        assert_eq!(
+            Privilege::Sudo.wrap(cmd.clone(), true),
+            v(&["sudo", "apk", "add", "curl"])
+        );
         assert_eq!(Privilege::Unavailable.wrap(cmd.clone(), false), cmd);
     }
 
@@ -193,8 +217,14 @@ mod tests {
     fn check_argv() {
         assert_eq!(Privilege::Root.check_argv(), None);
         assert_eq!(Privilege::Unavailable.check_argv(), None);
-        assert_eq!(Privilege::Doas.check_argv(), Some(v(&["doas", "-n", "true"])));
-        assert_eq!(Privilege::Sudo.check_argv(), Some(v(&["sudo", "-n", "true"])));
+        assert_eq!(
+            Privilege::Doas.check_argv(),
+            Some(v(&["doas", "-n", "true"]))
+        );
+        assert_eq!(
+            Privilege::Sudo.check_argv(),
+            Some(v(&["sudo", "-n", "true"]))
+        );
     }
 
     #[test]
@@ -212,28 +242,49 @@ mod tests {
 
     #[test]
     fn operation_argv() {
-        assert_eq!(Operation::Install("curl".into()).argv(), v(&["apk", "--no-progress", "add", "curl"]));
-        assert_eq!(Operation::Remove("curl".into()).argv(), v(&["apk", "--no-progress", "del", "curl"]));
+        assert_eq!(
+            Operation::Install("curl".into()).argv(),
+            v(&["apk", "--no-progress", "add", "curl"])
+        );
+        assert_eq!(
+            Operation::Remove("curl".into()).argv(),
+            v(&["apk", "--no-progress", "del", "curl"])
+        );
         assert_eq!(
             Operation::Upgrade("curl".into()).argv(),
             v(&["apk", "--no-progress", "add", "--upgrade", "curl"])
         );
-        assert_eq!(Operation::UpgradeAll.argv(), v(&["apk", "--no-progress", "upgrade"]));
-        assert_eq!(Operation::UpdateIndex.argv(), v(&["apk", "--no-progress", "update"]));
+        assert_eq!(
+            Operation::UpgradeAll.argv(),
+            v(&["apk", "--no-progress", "upgrade"])
+        );
+        assert_eq!(
+            Operation::UpdateIndex.argv(),
+            v(&["apk", "--no-progress", "update"])
+        );
     }
 
     #[test]
     fn operation_labels() {
         let i = Operation::Install("curl".into());
-        assert_eq!((i.verb(), i.past(), i.subject().as_str()), ("Installing", "Installed", "curl"));
+        assert_eq!(
+            (i.verb(), i.past(), i.subject().as_str()),
+            ("Installing", "Installed", "curl")
+        );
         let r = Operation::Remove("curl".into());
         assert_eq!((r.verb(), r.past()), ("Removing", "Removed"));
         let u = Operation::Upgrade("curl".into());
         assert_eq!((u.verb(), u.past()), ("Upgrading", "Upgraded"));
         let a = Operation::UpgradeAll;
-        assert_eq!((a.verb(), a.past(), a.subject().as_str()), ("Upgrading", "Upgraded", "all packages"));
+        assert_eq!(
+            (a.verb(), a.past(), a.subject().as_str()),
+            ("Upgrading", "Upgraded", "all packages")
+        );
         let x = Operation::UpdateIndex;
-        assert_eq!((x.verb(), x.past(), x.subject().as_str()), ("Updating", "Updated", "package indexes"));
+        assert_eq!(
+            (x.verb(), x.past(), x.subject().as_str()),
+            ("Updating", "Updated", "package indexes")
+        );
     }
 
     /// Fake runner returning canned output depending on the argv.
@@ -243,7 +294,9 @@ mod tests {
 
     impl FakeRunner {
         fn new() -> Self {
-            FakeRunner { calls: Mutex::new(Vec::new()) }
+            FakeRunner {
+                calls: Mutex::new(Vec::new()),
+            }
         }
     }
 
@@ -269,7 +322,10 @@ mod tests {
 
     #[test]
     fn apk_version_strips_compile_info() {
-        assert_eq!(apk_version(&FakeRunner::new()).unwrap(), "apk-tools 3.0.8-r0");
+        assert_eq!(
+            apk_version(&FakeRunner::new()).unwrap(),
+            "apk-tools 3.0.8-r0"
+        );
     }
 
     #[test]
@@ -293,7 +349,10 @@ mod tests {
         for call in calls.iter() {
             assert_eq!(&call[..2], &["apk".to_string(), "query".to_string()]);
             assert!(call.windows(2).any(|w| w == ["--format", "json"]));
-            assert!(call.windows(2).any(|w| w[0] == "--fields" && w[1] == QUERY_FIELDS));
+            assert!(
+                call.windows(2)
+                    .any(|w| w[0] == "--fields" && w[1] == QUERY_FIELDS)
+            );
             assert_eq!(call.last().unwrap(), "*");
         }
     }

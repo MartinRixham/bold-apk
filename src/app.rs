@@ -50,7 +50,7 @@ pub enum Mode {
 pub enum Command {
     Quit,
     Run(Vec<Operation>),
-    VulnScan(Package),
+    VulnScan(Box<Package>),
     /// Reload the package catalog from apk.
     Reload,
 }
@@ -61,10 +61,23 @@ pub enum AppEvent {
     PackagesLoaded(Vec<Package>),
     OutputLine(String),
     Notify(Level, String),
-    OperationStarted { index: usize, total: usize, operation: Operation },
-    OperationFinished { operation: Operation, error: Option<String> },
-    BatchFinished { total: usize, failed: usize },
-    VulnsScanned { name: String, result: Result<Vec<Vulnerability>, String> },
+    OperationStarted {
+        index: usize,
+        total: usize,
+        operation: Operation,
+    },
+    OperationFinished {
+        operation: Operation,
+        error: Option<String>,
+    },
+    BatchFinished {
+        total: usize,
+        failed: usize,
+    },
+    VulnsScanned {
+        name: String,
+        result: Result<Vec<Vulnerability>, String>,
+    },
 }
 
 /// A key hint in the legend bar.
@@ -128,7 +141,8 @@ impl App {
     }
 
     pub fn selected(&self) -> Option<&Package> {
-        self.selected_index().map(|i| &self.packages[self.visible[i]])
+        self.selected_index()
+            .map(|i| &self.packages[self.visible[i]])
     }
 
     /// Recomputes the visible list. Keeps the selected package when `to_top` is false.
@@ -155,7 +169,9 @@ impl App {
         let pkgs = &self.packages;
         match self.sort {
             SortMode::None => {}
-            SortMode::Size => visible.sort_by(|&a, &b| pkgs[b].installed_size.cmp(&pkgs[a].installed_size)),
+            SortMode::Size => {
+                visible.sort_by(|&a, &b| pkgs[b].installed_size.cmp(&pkgs[a].installed_size))
+            }
             SortMode::Name => {
                 visible.sort_by_cached_key(|&i| pkgs[i].name.to_lowercase());
             }
@@ -172,7 +188,10 @@ impl App {
     }
 
     fn notify(&mut self, level: Level, text: impl Into<String>) {
-        self.notification = Some(Notification { level, text: text.into() });
+        self.notification = Some(Notification {
+            level,
+            text: text.into(),
+        });
     }
 
     fn move_selection(&mut self, delta: isize) {
@@ -198,7 +217,11 @@ impl App {
     }
 
     fn toggle_filter(&mut self, filter: Filter) {
-        self.filter = if self.filter == filter { Filter::None } else { filter };
+        self.filter = if self.filter == filter {
+            Filter::None
+        } else {
+            filter
+        };
         self.refresh(true);
     }
 
@@ -247,7 +270,11 @@ impl App {
             self.notify(Level::Warning, "Another operation is already running");
             return;
         }
-        self.mode = Mode::Confirm(Confirm { message, operations, confirm_selected: true });
+        self.mode = Mode::Confirm(Confirm {
+            message,
+            operations,
+            confirm_selected: true,
+        });
     }
 
     fn ask_single(&mut self, action: &str, make: fn(String) -> Operation, require_installed: bool) {
@@ -323,8 +350,11 @@ impl App {
             KeyCode::Char('r') => self.ask_single("remove", Operation::Remove, true),
             KeyCode::Char('v') => {
                 let pkg = self.selected()?.clone();
-                self.notify(Level::Warning, format!("Scanning {} for vulnerabilities...", pkg.name));
-                return Some(Command::VulnScan(pkg));
+                self.notify(
+                    Level::Warning,
+                    format!("Scanning {} for vulnerabilities...", pkg.name),
+                );
+                return Some(Command::VulnScan(Box::new(pkg)));
             }
             _ => {}
         }
@@ -348,9 +378,17 @@ impl App {
             }
             AppEvent::OutputLine(line) => self.push_output(line),
             AppEvent::Notify(level, text) => self.notify(level, text),
-            AppEvent::OperationStarted { index, total, operation } => {
+            AppEvent::OperationStarted {
+                index,
+                total,
+                operation,
+            } => {
                 let what = format!("{} {}", operation.verb(), operation.subject());
-                let progress = if total > 1 { format!("[{index}/{total}] ") } else { String::new() };
+                let progress = if total > 1 {
+                    format!("[{index}/{total}] ")
+                } else {
+                    String::new()
+                };
                 self.notify(Level::Warning, format!("{progress}{what}..."));
                 self.push_output(format!("==> {what}"));
             }
@@ -364,7 +402,11 @@ impl App {
                     self.push_output(format!("[ERROR] {err}"));
                     self.notify(
                         Level::Error,
-                        format!("Error {} {}", operation.verb().to_lowercase(), operation.subject()),
+                        format!(
+                            "Error {} {}",
+                            operation.verb().to_lowercase(),
+                            operation.subject()
+                        ),
                     );
                 }
             },
@@ -377,7 +419,10 @@ impl App {
                             format!("Completed! Processed {total} packages ({failed} failed)"),
                         );
                     } else {
-                        self.notify(Level::Success, format!("Completed! Processed {total} packages"));
+                        self.notify(
+                            Level::Success,
+                            format!("Completed! Processed {total} packages"),
+                        );
                     }
                 }
                 return Some(Command::Reload);
@@ -385,9 +430,13 @@ impl App {
             AppEvent::VulnsScanned { name, result } => match result {
                 Ok(vulns) => {
                     match vulns.len() {
-                        0 => self.notify(Level::Success, format!("{name}: no vulnerabilities found")),
+                        0 => {
+                            self.notify(Level::Success, format!("{name}: no vulnerabilities found"))
+                        }
                         1 => self.notify(Level::Error, format!("{name}: 1 vulnerability found")),
-                        n => self.notify(Level::Error, format!("{name}: {n} vulnerabilities found")),
+                        n => {
+                            self.notify(Level::Error, format!("{name}: {n} vulnerabilities found"))
+                        }
                     }
                     self.vulns.insert(name, vulns);
                 }
@@ -420,13 +469,21 @@ impl App {
         };
         entries
             .into_iter()
-            .map(|(key, name)| LegendEntry { key, name, active: Some(key) == active_key })
+            .map(|(key, name)| LegendEntry {
+                key,
+                name,
+                active: Some(key) == active_key,
+            })
             .collect()
     }
 
     /// Header line text.
     pub fn header(&self) -> String {
-        format!("{APP_NAME} {} - {}", env!("CARGO_PKG_VERSION"), self.apk_version)
+        format!(
+            "{APP_NAME} {} - {}",
+            env!("CARGO_PKG_VERSION"),
+            self.apk_version
+        )
     }
 
     /// Package counter text.
@@ -564,11 +621,20 @@ mod tests {
     fn each_filter_key() {
         let mut a = app();
         a.handle_key(ch('o'));
-        assert_eq!((a.filter, names(&a)), (Filter::Upgradable, vec!["curl".to_string()]));
+        assert_eq!(
+            (a.filter, names(&a)),
+            (Filter::Upgradable, vec!["curl".to_string()])
+        );
         a.handle_key(ch('l'));
-        assert_eq!((a.filter, names(&a)), (Filter::World, vec!["curl".to_string()]));
+        assert_eq!(
+            (a.filter, names(&a)),
+            (Filter::World, vec!["curl".to_string()])
+        );
         a.handle_key(ch('c'));
-        assert_eq!((a.filter, names(&a)), (Filter::Community, vec!["zsh".to_string()]));
+        assert_eq!(
+            (a.filter, names(&a)),
+            (Filter::Community, vec!["zsh".to_string()])
+        );
         a.handle_key(ch('m'));
         assert_eq!(a.filter, Filter::Main);
         assert_eq!(names(&a), vec!["curl", "bash", "git"]);
@@ -580,7 +646,10 @@ mod tests {
         packages[2].tui = true;
         let mut a = App::new(packages);
         a.handle_key(ch('t'));
-        assert_eq!((a.filter, names(&a)), (Filter::Tui, vec!["zsh".to_string()]));
+        assert_eq!(
+            (a.filter, names(&a)),
+            (Filter::Tui, vec!["zsh".to_string()])
+        );
         assert_eq!(a.search_label(), "Search (TUI): ");
         a.handle_key(ch('t'));
         assert_eq!(a.filter, Filter::None);
@@ -745,7 +814,10 @@ mod tests {
         a.handle_key(ch('G')); // git
         assert_eq!(a.handle_key(ch('i')), None);
         let c = confirm(&a);
-        assert_eq!(c.message, "Are you sure you want to install the package: git?");
+        assert_eq!(
+            c.message,
+            "Are you sure you want to install the package: git?"
+        );
         assert_eq!(c.operations, vec![Operation::Install("git".into())]);
         assert!(c.confirm_selected);
     }
@@ -755,7 +827,10 @@ mod tests {
         let mut a = app();
         a.output.push("old output".into());
         a.handle_key(ch('i'));
-        assert_eq!(a.handle_key(key(KeyCode::Enter)), Some(Command::Run(vec![Operation::Install("curl".into())])));
+        assert_eq!(
+            a.handle_key(key(KeyCode::Enter)),
+            Some(Command::Run(vec![Operation::Install("curl".into())]))
+        );
         assert_eq!(a.mode, Mode::Normal);
         assert!(a.busy);
         assert!(a.output.is_empty());
@@ -803,12 +878,24 @@ mod tests {
     fn upgrade_and_remove_selected() {
         let mut a = app();
         a.handle_key(ch('u'));
-        assert_eq!(confirm(&a).message, "Are you sure you want to upgrade the package: curl?");
-        assert_eq!(confirm(&a).operations, vec![Operation::Upgrade("curl".into())]);
+        assert_eq!(
+            confirm(&a).message,
+            "Are you sure you want to upgrade the package: curl?"
+        );
+        assert_eq!(
+            confirm(&a).operations,
+            vec![Operation::Upgrade("curl".into())]
+        );
         let mut a = app();
         a.handle_key(ch('r'));
-        assert_eq!(confirm(&a).message, "Are you sure you want to remove the package: curl?");
-        assert_eq!(confirm(&a).operations, vec![Operation::Remove("curl".into())]);
+        assert_eq!(
+            confirm(&a).message,
+            "Are you sure you want to remove the package: curl?"
+        );
+        assert_eq!(
+            confirm(&a).operations,
+            vec![Operation::Remove("curl".into())]
+        );
     }
 
     #[test]
@@ -818,7 +905,10 @@ mod tests {
         a.handle_key(ch('u'));
         assert_eq!(a.mode, Mode::Normal);
         assert_eq!(a.notification.as_ref().unwrap().level, Level::Warning);
-        assert_eq!(a.notification.as_ref().unwrap().text, "git is not installed");
+        assert_eq!(
+            a.notification.as_ref().unwrap().text,
+            "git is not installed"
+        );
         a.handle_key(ch('r'));
         assert_eq!(a.mode, Mode::Normal);
     }
@@ -835,7 +925,10 @@ mod tests {
     fn upgrade_all_with_ctrl_u() {
         let mut a = app();
         a.handle_key(ctrl('u'));
-        assert_eq!(confirm(&a).message, "Are you sure you want to upgrade all packages?");
+        assert_eq!(
+            confirm(&a).message,
+            "Are you sure you want to upgrade all packages?"
+        );
         assert_eq!(confirm(&a).operations, vec![Operation::UpgradeAll]);
     }
 
@@ -845,7 +938,10 @@ mod tests {
         a.busy = true;
         a.handle_key(ch('i'));
         assert_eq!(a.mode, Mode::Normal);
-        assert_eq!(a.notification.as_ref().unwrap().text, "Another operation is already running");
+        assert_eq!(
+            a.notification.as_ref().unwrap().text,
+            "Another operation is already running"
+        );
         a.handle_key(ctrl('u'));
         assert_eq!(a.mode, Mode::Normal);
     }
@@ -873,8 +969,11 @@ mod tests {
     fn vuln_scan_returns_command_for_selected() {
         let mut a = app();
         let cmd = a.handle_key(ch('v'));
-        assert_eq!(cmd, Some(Command::VulnScan(sample()[0].clone())));
-        assert_eq!(a.notification.as_ref().unwrap().text, "Scanning curl for vulnerabilities...");
+        assert_eq!(cmd, Some(Command::VulnScan(Box::new(sample()[0].clone()))));
+        assert_eq!(
+            a.notification.as_ref().unwrap().text,
+            "Scanning curl for vulnerabilities..."
+        );
     }
 
     // ---- background events ------------------------------------------------
@@ -904,23 +1003,58 @@ mod tests {
     fn notify_event_sets_notification() {
         let mut a = app();
         a.handle_event(AppEvent::Notify(Level::Error, "bad".into()));
-        assert_eq!(a.notification, Some(Notification { level: Level::Error, text: "bad".into() }));
+        assert_eq!(
+            a.notification,
+            Some(Notification {
+                level: Level::Error,
+                text: "bad".into()
+            })
+        );
     }
 
     #[test]
     fn operation_progress_messages() {
         let mut a = app();
         let op = Operation::Install("git".into());
-        a.handle_event(AppEvent::OperationStarted { index: 1, total: 1, operation: op.clone() });
+        a.handle_event(AppEvent::OperationStarted {
+            index: 1,
+            total: 1,
+            operation: op.clone(),
+        });
         assert_eq!(a.notification.as_ref().unwrap().text, "Installing git...");
         assert_eq!(a.output.last().unwrap(), "==> Installing git");
-        a.handle_event(AppEvent::OperationStarted { index: 2, total: 3, operation: op.clone() });
-        assert_eq!(a.notification.as_ref().unwrap().text, "[2/3] Installing git...");
-        a.handle_event(AppEvent::OperationFinished { operation: op.clone(), error: None });
-        assert_eq!(a.notification, Some(Notification { level: Level::Success, text: "Installed git".into() }));
+        a.handle_event(AppEvent::OperationStarted {
+            index: 2,
+            total: 3,
+            operation: op.clone(),
+        });
+        assert_eq!(
+            a.notification.as_ref().unwrap().text,
+            "[2/3] Installing git..."
+        );
+        a.handle_event(AppEvent::OperationFinished {
+            operation: op.clone(),
+            error: None,
+        });
+        assert_eq!(
+            a.notification,
+            Some(Notification {
+                level: Level::Success,
+                text: "Installed git".into()
+            })
+        );
         assert_eq!(a.output.last().unwrap(), "[SUCCESS] Installed git");
-        a.handle_event(AppEvent::OperationFinished { operation: op, error: Some("exit 1".into()) });
-        assert_eq!(a.notification, Some(Notification { level: Level::Error, text: "Error installing git".into() }));
+        a.handle_event(AppEvent::OperationFinished {
+            operation: op,
+            error: Some("exit 1".into()),
+        });
+        assert_eq!(
+            a.notification,
+            Some(Notification {
+                level: Level::Error,
+                text: "Error installing git".into()
+            })
+        );
         assert_eq!(a.output.last().unwrap(), "[ERROR] exit 1");
     }
 
@@ -928,30 +1062,93 @@ mod tests {
     fn batch_finished_clears_busy_and_requests_reload() {
         let mut a = app();
         a.busy = true;
-        a.handle_event(AppEvent::OperationFinished { operation: Operation::UpgradeAll, error: None });
-        assert_eq!(a.handle_event(AppEvent::BatchFinished { total: 1, failed: 0 }), Some(Command::Reload));
+        a.handle_event(AppEvent::OperationFinished {
+            operation: Operation::UpgradeAll,
+            error: None,
+        });
+        assert_eq!(
+            a.handle_event(AppEvent::BatchFinished {
+                total: 1,
+                failed: 0
+            }),
+            Some(Command::Reload)
+        );
         assert!(!a.busy);
-        assert_eq!(a.notification.as_ref().unwrap().text, "Upgraded all packages");
-        a.handle_event(AppEvent::BatchFinished { total: 3, failed: 1 });
-        assert_eq!(a.notification, Some(Notification { level: Level::Warning, text: "Completed! Processed 3 packages (1 failed)".into() }));
-        a.handle_event(AppEvent::BatchFinished { total: 2, failed: 0 });
-        assert_eq!(a.notification, Some(Notification { level: Level::Success, text: "Completed! Processed 2 packages".into() }));
+        assert_eq!(
+            a.notification.as_ref().unwrap().text,
+            "Upgraded all packages"
+        );
+        a.handle_event(AppEvent::BatchFinished {
+            total: 3,
+            failed: 1,
+        });
+        assert_eq!(
+            a.notification,
+            Some(Notification {
+                level: Level::Warning,
+                text: "Completed! Processed 3 packages (1 failed)".into()
+            })
+        );
+        a.handle_event(AppEvent::BatchFinished {
+            total: 2,
+            failed: 0,
+        });
+        assert_eq!(
+            a.notification,
+            Some(Notification {
+                level: Level::Success,
+                text: "Completed! Processed 2 packages".into()
+            })
+        );
     }
 
     #[test]
     fn vulns_scanned_results() {
         let mut a = app();
-        a.handle_event(AppEvent::VulnsScanned { name: "curl".into(), result: Ok(vec![]) });
-        assert_eq!(a.notification, Some(Notification { level: Level::Success, text: "curl: no vulnerabilities found".into() }));
+        a.handle_event(AppEvent::VulnsScanned {
+            name: "curl".into(),
+            result: Ok(vec![]),
+        });
+        assert_eq!(
+            a.notification,
+            Some(Notification {
+                level: Level::Success,
+                text: "curl: no vulnerabilities found".into()
+            })
+        );
         assert_eq!(a.vulns.get("curl"), Some(&vec![]));
-        let v = Vulnerability { id: "CVE-1".into(), fixed_in: "2-r0".into() };
-        a.handle_event(AppEvent::VulnsScanned { name: "bash".into(), result: Ok(vec![v.clone()]) });
-        assert_eq!(a.notification.as_ref().unwrap().text, "bash: 1 vulnerability found");
+        let v = Vulnerability {
+            id: "CVE-1".into(),
+            fixed_in: "2-r0".into(),
+        };
+        a.handle_event(AppEvent::VulnsScanned {
+            name: "bash".into(),
+            result: Ok(vec![v.clone()]),
+        });
+        assert_eq!(
+            a.notification.as_ref().unwrap().text,
+            "bash: 1 vulnerability found"
+        );
         assert_eq!(a.notification.as_ref().unwrap().level, Level::Error);
-        a.handle_event(AppEvent::VulnsScanned { name: "bash".into(), result: Ok(vec![v.clone(), v]) });
-        assert_eq!(a.notification.as_ref().unwrap().text, "bash: 2 vulnerabilities found");
-        a.handle_event(AppEvent::VulnsScanned { name: "x".into(), result: Err("offline".into()) });
-        assert_eq!(a.notification, Some(Notification { level: Level::Error, text: "Vuln scan failed: offline".into() }));
+        a.handle_event(AppEvent::VulnsScanned {
+            name: "bash".into(),
+            result: Ok(vec![v.clone(), v]),
+        });
+        assert_eq!(
+            a.notification.as_ref().unwrap().text,
+            "bash: 2 vulnerabilities found"
+        );
+        a.handle_event(AppEvent::VulnsScanned {
+            name: "x".into(),
+            result: Err("offline".into()),
+        });
+        assert_eq!(
+            a.notification,
+            Some(Notification {
+                level: Level::Error,
+                text: "Vuln scan failed: offline".into()
+            })
+        );
     }
 
     // ---- labels -----------------------------------------------------------
@@ -971,7 +1168,12 @@ mod tests {
         assert_eq!(keys, vec!["/", "f", "s", "v", "i", "u", "r", "?"]);
         assert!(a.legend().iter().all(|e| !e.active));
         a.handle_key(ch('f'));
-        let active: Vec<&str> = a.legend().iter().filter(|e| e.active).map(|e| e.key).collect();
+        let active: Vec<&str> = a
+            .legend()
+            .iter()
+            .filter(|e| e.active)
+            .map(|e| e.key)
+            .collect();
         assert_eq!(active, vec!["f"]);
     }
 
@@ -979,10 +1181,15 @@ mod tests {
     fn header_and_counter() {
         let mut a = app();
         a.apk_version = "apk-tools 3.0.8-r0".into();
-        assert_eq!(a.header(), format!("Bold APK {} - apk-tools 3.0.8-r0", env!("CARGO_PKG_VERSION")));
+        assert_eq!(
+            a.header(),
+            format!(
+                "Bold APK {} - apk-tools 3.0.8-r0",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
         assert_eq!(a.counter(), "Total: 4 | Filtered: 4");
         a.handle_key(ch('f'));
         assert_eq!(a.counter(), "Total: 4 | Filtered: 2");
     }
-
 }

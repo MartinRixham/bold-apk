@@ -33,20 +33,31 @@ pub fn plan_execution(privilege: Privilege, can_escalate_silently: bool) -> Exec
 
 /// Runs operations sequentially, streaming output through `send`.
 /// `exec` runs one argv, calling the line callback for each output line.
-pub fn run_operations<E, S>(operations: &[Operation], wrap: impl Fn(Vec<String>) -> Vec<String>, mut exec: E, mut send: S)
-where
+pub fn run_operations<E, S>(
+    operations: &[Operation],
+    wrap: impl Fn(Vec<String>) -> Vec<String>,
+    mut exec: E,
+    mut send: S,
+) where
     E: FnMut(&[String], &mut dyn FnMut(String)) -> Result<()>,
     S: FnMut(AppEvent),
 {
     let total = operations.len();
     let mut failed = 0;
     for (i, operation) in operations.iter().enumerate() {
-        send(AppEvent::OperationStarted { index: i + 1, total, operation: operation.clone() });
+        send(AppEvent::OperationStarted {
+            index: i + 1,
+            total,
+            operation: operation.clone(),
+        });
         let argv = wrap(operation.argv());
         let result = exec(&argv, &mut |line| send(AppEvent::OutputLine(line)));
         let error = result.err().map(|e| e.to_string());
         failed += usize::from(error.is_some());
-        send(AppEvent::OperationFinished { operation: operation.clone(), error });
+        send(AppEvent::OperationFinished {
+            operation: operation.clone(),
+            error,
+        });
     }
     send(AppEvent::BatchFinished { total, failed });
 }
@@ -78,7 +89,8 @@ pub fn load_secdb(
             match fetch(&url) {
                 Ok(json) => {
                     // A failed cache write is not fatal; the data is still usable.
-                    let _ = std::fs::create_dir_all(cache_dir).and_then(|_| std::fs::write(&cache, &json));
+                    let _ = std::fs::create_dir_all(cache_dir)
+                        .and_then(|_| std::fs::write(&cache, &json));
                     json
                 }
                 Err(err) => std::fs::read_to_string(&cache)
@@ -93,7 +105,11 @@ pub fn load_secdb(
 
 /// Vulnerabilities affecting the installed (or else latest available) version of `pkg`.
 pub fn scan_package(pkg: &Package, db: &SecDb) -> Vec<Vulnerability> {
-    let origin = if pkg.origin.is_empty() { &pkg.name } else { &pkg.origin };
+    let origin = if pkg.origin.is_empty() {
+        &pkg.name
+    } else {
+        &pkg.origin
+    };
     let version = pkg.installed_version.as_deref().unwrap_or(&pkg.version);
     db.vulnerabilities(origin, version)
 }
@@ -117,11 +133,20 @@ mod tests {
     #[test]
     fn plan_execution_modes() {
         assert_eq!(plan_execution(Privilege::Root, false), ExecMode::Direct);
-        assert_eq!(plan_execution(Privilege::Unavailable, false), ExecMode::Direct);
+        assert_eq!(
+            plan_execution(Privilege::Unavailable, false),
+            ExecMode::Direct
+        );
         assert_eq!(plan_execution(Privilege::Doas, true), ExecMode::Streamed);
         assert_eq!(plan_execution(Privilege::Sudo, true), ExecMode::Streamed);
-        assert_eq!(plan_execution(Privilege::Doas, false), ExecMode::Interactive);
-        assert_eq!(plan_execution(Privilege::Sudo, false), ExecMode::Interactive);
+        assert_eq!(
+            plan_execution(Privilege::Doas, false),
+            ExecMode::Interactive
+        );
+        assert_eq!(
+            plan_execution(Privilege::Sudo, false),
+            ExecMode::Interactive
+        );
     }
 
     fn wrap(argv: Vec<String>) -> Vec<String> {
@@ -130,7 +155,10 @@ mod tests {
 
     #[test]
     fn run_operations_streams_events_in_order() {
-        let ops = vec![Operation::Install("a".into()), Operation::Install("b".into())];
+        let ops = vec![
+            Operation::Install("a".into()),
+            Operation::Install("b".into()),
+        ];
         let mut events = Vec::new();
         let mut argvs = Vec::new();
         run_operations(
@@ -143,18 +171,38 @@ mod tests {
             },
             |e| events.push(e),
         );
-        assert_eq!(argvs[0], vec!["doas", "-n", "apk", "--no-progress", "add", "a"]);
+        assert_eq!(
+            argvs[0],
+            vec!["doas", "-n", "apk", "--no-progress", "add", "a"]
+        );
         assert_eq!(argvs.len(), 2);
         assert_eq!(
             events,
             vec![
-                AppEvent::OperationStarted { index: 1, total: 2, operation: ops[0].clone() },
+                AppEvent::OperationStarted {
+                    index: 1,
+                    total: 2,
+                    operation: ops[0].clone()
+                },
                 AppEvent::OutputLine("output for a".into()),
-                AppEvent::OperationFinished { operation: ops[0].clone(), error: None },
-                AppEvent::OperationStarted { index: 2, total: 2, operation: ops[1].clone() },
+                AppEvent::OperationFinished {
+                    operation: ops[0].clone(),
+                    error: None
+                },
+                AppEvent::OperationStarted {
+                    index: 2,
+                    total: 2,
+                    operation: ops[1].clone()
+                },
                 AppEvent::OutputLine("output for b".into()),
-                AppEvent::OperationFinished { operation: ops[1].clone(), error: None },
-                AppEvent::BatchFinished { total: 2, failed: 0 },
+                AppEvent::OperationFinished {
+                    operation: ops[1].clone(),
+                    error: None
+                },
+                AppEvent::BatchFinished {
+                    total: 2,
+                    failed: 0
+                },
             ]
         );
     }
@@ -166,29 +214,54 @@ mod tests {
         run_operations(
             &ops,
             |a| a,
-            |argv, _| if argv.last().unwrap() == "a" { bail!("permission denied") } else { Ok(()) },
+            |argv, _| {
+                if argv.last().unwrap() == "a" {
+                    bail!("permission denied")
+                } else {
+                    Ok(())
+                }
+            },
             |e| events.push(e),
         );
         assert!(events.contains(&AppEvent::OperationFinished {
             operation: ops[0].clone(),
             error: Some("permission denied".into())
         }));
-        assert!(events.contains(&AppEvent::OperationFinished { operation: ops[1].clone(), error: None }));
-        assert_eq!(events.last(), Some(&AppEvent::BatchFinished { total: 2, failed: 1 }));
+        assert!(events.contains(&AppEvent::OperationFinished {
+            operation: ops[1].clone(),
+            error: None
+        }));
+        assert_eq!(
+            events.last(),
+            Some(&AppEvent::BatchFinished {
+                total: 2,
+                failed: 1
+            })
+        );
     }
 
     #[test]
     fn fetch_uses_wget() {
-        assert_eq!(fetch_argv("https://x/y"), vec!["wget", "-q", "-O", "-", "https://x/y"]);
+        assert_eq!(
+            fetch_argv("https://x/y"),
+            vec!["wget", "-q", "-O", "-", "https://x/y"]
+        );
     }
 
-    const MAIN: &str = r#"{"packages":[{"pkg":{"name":"openssl","secfixes":{"3.5.4-r0":["CVE-1"]}}}]}"#;
-    const COMMUNITY: &str = r#"{"packages":[{"pkg":{"name":"7zip","secfixes":{"26.01-r0":["CVE-2"]}}}]}"#;
+    const MAIN: &str =
+        r#"{"packages":[{"pkg":{"name":"openssl","secfixes":{"3.5.4-r0":["CVE-1"]}}}]}"#;
+    const COMMUNITY: &str =
+        r#"{"packages":[{"pkg":{"name":"7zip","secfixes":{"26.01-r0":["CVE-2"]}}}]}"#;
 
     fn fake_fetch(calls: &RefCell<Vec<String>>) -> impl Fn(&str) -> Result<String> + '_ {
         move |url: &str| {
             calls.borrow_mut().push(url.to_string());
-            Ok(if url.ends_with("main.json") { MAIN } else { COMMUNITY }.to_string())
+            Ok(if url.ends_with("main.json") {
+                MAIN
+            } else {
+                COMMUNITY
+            }
+            .to_string())
         }
     }
 
@@ -196,13 +269,25 @@ mod tests {
     fn load_secdb_fetches_and_caches() {
         let dir = tempfile::tempdir().unwrap();
         let calls = RefCell::new(Vec::new());
-        let db = load_secdb("v3.24", dir.path(), Duration::from_secs(3600), fake_fetch(&calls)).unwrap();
+        let db = load_secdb(
+            "v3.24",
+            dir.path(),
+            Duration::from_secs(3600),
+            fake_fetch(&calls),
+        )
+        .unwrap();
         assert_eq!(calls.borrow().len(), 2);
         assert_eq!(db.vulnerabilities("openssl", "3.0-r0").len(), 1);
         assert_eq!(db.vulnerabilities("7zip", "1-r0").len(), 1);
         assert!(dir.path().join("secdb-v3.24-main.json").exists());
 
-        let db = load_secdb("v3.24", dir.path(), Duration::from_secs(3600), fake_fetch(&calls)).unwrap();
+        let db = load_secdb(
+            "v3.24",
+            dir.path(),
+            Duration::from_secs(3600),
+            fake_fetch(&calls),
+        )
+        .unwrap();
         assert_eq!(calls.borrow().len(), 2, "second load should use cache");
         assert_eq!(db.vulnerabilities("openssl", "3.0-r0").len(), 1);
     }
@@ -240,24 +325,44 @@ mod tests {
             version: "3.6.0-r0".into(),
             ..Default::default()
         };
-        assert!(scan_package(&p, &db).is_empty(), "latest available version is fixed");
+        assert!(
+            scan_package(&p, &db).is_empty(),
+            "latest available version is fixed"
+        );
         p.installed = true;
         p.installed_version = Some("3.5.0-r0".into());
-        assert_eq!(scan_package(&p, &db).len(), 1, "installed version is vulnerable");
+        assert_eq!(
+            scan_package(&p, &db).len(),
+            1,
+            "installed version is vulnerable"
+        );
     }
 
     #[test]
     fn scan_falls_back_to_name_without_origin() {
         let db = SecDb::parse(MAIN).unwrap();
-        let p = Package { name: "openssl".into(), version: "3.0-r0".into(), ..Default::default() };
+        let p = Package {
+            name: "openssl".into(),
+            version: "3.0-r0".into(),
+            ..Default::default()
+        };
         assert_eq!(scan_package(&p, &db).len(), 1);
     }
 
     #[test]
     fn cache_dir_prefers_xdg() {
-        assert_eq!(cache_dir(Some("/x/cache"), Some("/home/u")), PathBuf::from("/x/cache/bapk"));
-        assert_eq!(cache_dir(Some(""), Some("/home/u")), PathBuf::from("/home/u/.cache/bapk"));
-        assert_eq!(cache_dir(None, Some("/home/u")), PathBuf::from("/home/u/.cache/bapk"));
+        assert_eq!(
+            cache_dir(Some("/x/cache"), Some("/home/u")),
+            PathBuf::from("/x/cache/bapk")
+        );
+        assert_eq!(
+            cache_dir(Some(""), Some("/home/u")),
+            PathBuf::from("/home/u/.cache/bapk")
+        );
+        assert_eq!(
+            cache_dir(None, Some("/home/u")),
+            PathBuf::from("/home/u/.cache/bapk")
+        );
         assert_eq!(cache_dir(None, None), PathBuf::from("/tmp/bapk"));
     }
 }

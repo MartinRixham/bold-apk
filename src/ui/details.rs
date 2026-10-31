@@ -11,8 +11,14 @@ const SEPARATOR: &str = "──────────────────�
 
 fn title(text: impl Into<String>, color: Color) -> Vec<Line<'static>> {
     vec![
-        Line::from(Span::styled(text.into(), Style::new().fg(color).add_modifier(Modifier::BOLD))),
-        Line::from(Span::styled(SEPARATOR, Style::new().add_modifier(Modifier::DIM))),
+        Line::from(Span::styled(
+            text.into(),
+            Style::new().fg(color).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(Span::styled(
+            SEPARATOR,
+            Style::new().add_modifier(Modifier::DIM),
+        )),
     ]
 }
 
@@ -21,7 +27,10 @@ fn field(label: &str, value: impl Into<String>) -> Line<'static> {
 }
 
 fn field_styled(label: &str, value: Span<'static>) -> Line<'static> {
-    Line::from(vec![Span::styled(format!("• {label}: "), Style::new().fg(Color::Blue)), value])
+    Line::from(vec![
+        Span::styled(format!("• {label}: "), Style::new().fg(Color::Blue)),
+        value,
+    ])
 }
 
 fn status(pkg: &Package) -> Span<'static> {
@@ -52,15 +61,25 @@ fn basic(pkg: &Package) -> Vec<Line<'static>> {
 fn security(vulns: &[Vulnerability]) -> Vec<Line<'static>> {
     if vulns.is_empty() {
         let mut lines = title("Security", Color::Yellow);
-        lines.push(Line::from(Span::styled("✓ No known vulnerabilities", Style::new().fg(Color::Green))));
+        lines.push(Line::from(Span::styled(
+            "✓ No known vulnerabilities",
+            Style::new().fg(Color::Green),
+        )));
         return lines;
     }
-    let noun = if vulns.len() == 1 { "vulnerability" } else { "vulnerabilities" };
+    let noun = if vulns.len() == 1 {
+        "vulnerability"
+    } else {
+        "vulnerabilities"
+    };
     let mut lines = title(format!("⚠ Security ({} {noun})", vulns.len()), Color::Red);
     for v in vulns {
         lines.push(Line::from(vec![
             Span::styled(format!("  {}", v.id), Style::new().fg(Color::Red)),
-            Span::styled(format!(" (fixed in {})", v.fixed_in), Style::new().add_modifier(Modifier::DIM)),
+            Span::styled(
+                format!(" (fixed in {})", v.fixed_in),
+                Style::new().add_modifier(Modifier::DIM),
+            ),
         ]));
     }
     lines
@@ -72,8 +91,14 @@ fn installation(pkg: &Package) -> Vec<Line<'static>> {
         lines.push(Line::from("Not installed"));
         return lines;
     }
-    lines.push(field("Installed version", pkg.installed_version.clone().unwrap_or_default()));
-    lines.push(field("In world (explicit)", if pkg.explicit { "Yes" } else { "No" }));
+    lines.push(field(
+        "Installed version",
+        pkg.installed_version.clone().unwrap_or_default(),
+    ));
+    lines.push(field(
+        "In world (explicit)",
+        if pkg.explicit { "Yes" } else { "No" },
+    ));
     lines
 }
 
@@ -96,7 +121,10 @@ fn sizes(pkg: &Package) -> Vec<Line<'static>> {
 }
 
 /// Builds the details panel lines for a package. `vulns` is `None` when not scanned yet.
-pub fn details_lines(pkg: Option<&Package>, vulns: Option<&Vec<Vulnerability>>) -> Vec<Line<'static>> {
+pub fn details_lines(
+    pkg: Option<&Package>,
+    vulns: Option<&Vec<Vulnerability>>,
+) -> Vec<Line<'static>> {
     let Some(pkg) = pkg else {
         return Vec::new();
     };
@@ -123,7 +151,12 @@ mod tests {
     fn text(lines: &[Line]) -> String {
         lines
             .iter()
-            .map(|l| l.spans.iter().map(|s| s.content.as_ref()).collect::<String>())
+            .map(|l| {
+                l.spans
+                    .iter()
+                    .map(|s| s.content.as_ref())
+                    .collect::<String>()
+            })
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -140,7 +173,12 @@ mod tests {
             repo: Repo::Main,
             file_size: 630358,
             installed_size: 1480846,
-            depends: vec!["ca-certificates".into(), "so:libc.musl-aarch64.so.1".into(), "libcurl".into(), "zlib".into()],
+            depends: vec![
+                "ca-certificates".into(),
+                "so:libc.musl-aarch64.so.1".into(),
+                "libcurl".into(),
+                "zlib".into(),
+            ],
             ..Default::default()
         }
     }
@@ -173,7 +211,10 @@ mod tests {
     fn installation_status_variants() {
         let mut p = curl();
         let t = text(&details_lines(Some(&p), None));
-        assert!(t.contains("Installation\n────────────────────────\nNot installed"), "{t}");
+        assert!(
+            t.contains("Installation\n────────────────────────\nNot installed"),
+            "{t}"
+        );
         p.installed = true;
         p.installed_version = Some("8.1-r0".into());
         p.explicit = true;
@@ -219,8 +260,14 @@ mod tests {
         let t = text(&details_lines(Some(&curl()), Some(&vec![])));
         assert!(t.contains("✓ No known vulnerabilities"), "{t}");
         let v = vec![
-            Vulnerability { id: "CVE-2025-1".into(), fixed_in: "8.2-r0".into() },
-            Vulnerability { id: "CVE-2025-2".into(), fixed_in: "8.3-r0".into() },
+            Vulnerability {
+                id: "CVE-2025-1".into(),
+                fixed_in: "8.2-r0".into(),
+            },
+            Vulnerability {
+                id: "CVE-2025-2".into(),
+                fixed_in: "8.3-r0".into(),
+            },
         ];
         let t = text(&details_lines(Some(&curl()), Some(&v)));
         assert!(t.contains("⚠ Security (2 vulnerabilities)"), "{t}");
@@ -234,6 +281,9 @@ mod tests {
         let mut p = curl();
         p.repo = Repo::Local;
         let t = text(&details_lines(Some(&p), None));
-        assert!(t.contains("• Type: [L] local (not in any repository)"), "{t}");
+        assert!(
+            t.contains("• Type: [L] local (not in any repository)"),
+            "{t}"
+        );
     }
 }

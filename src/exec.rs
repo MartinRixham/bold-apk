@@ -90,7 +90,9 @@ mod tests {
 
     #[test]
     fn capture_fails_on_nonzero_exit_with_stderr() {
-        let err = capture(&sh("echo boom >&2; exit 2")).unwrap_err().to_string();
+        let err = capture(&sh("echo boom >&2; exit 2"))
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("boom"), "{err}");
     }
 
@@ -115,7 +117,10 @@ mod tests {
     #[test]
     fn stream_preserves_stdout_order() {
         let mut lines = Vec::new();
-        stream(&sh("for i in 1 2 3 4 5; do echo $i; done"), |l| lines.push(l)).unwrap();
+        stream(&sh("for i in 1 2 3 4 5; do echo $i; done"), |l| {
+            lines.push(l)
+        })
+        .unwrap();
         assert_eq!(lines, vec!["1", "2", "3", "4", "5"]);
     }
 
