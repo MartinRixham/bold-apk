@@ -22,6 +22,7 @@ bapk --version
 | `Esc` | Clear search / leave search |
 | `f` / `o` / `l` | Toggle installed / upgradable / world (explicitly installed) |
 | `m` / `c` | Toggle main / community repository |
+| `t` | Toggle TUI applications (heuristic: name/description, plus well-known TUIs) |
 | `s` | Cycle sort (None → Size → Name) |
 | `i` / `u` / `r` | Install / upgrade / remove selected |
 | `Ctrl+U` | Upgrade all |
@@ -60,6 +61,7 @@ cargo build --release  # target/release/bapk
 | `models` | `Package`, `Repo`, `Filter`, `SortMode` |
 | `catalog` | parse `apk query` JSON, merge available/installed/upgradable/world |
 | `world` | `/etc/apk/world` parsing (marks explicitly installed packages) |
+| `tui` | heuristic detection of terminal UI applications |
 | `secdb` | Alpine security database lookups |
 | `exec` | capture / line-streaming process execution |
 | `apk` | privilege escalation, operations → apk argv, catalog loading |

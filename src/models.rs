@@ -70,6 +70,8 @@ pub struct Package {
     pub upgradable: bool,
     /// Explicitly requested in /etc/apk/world.
     pub explicit: bool,
+    /// Looks like a terminal user interface application (see [`crate::tui`]).
+    pub tui: bool,
 }
 
 /// How the package list is sorted.
@@ -109,6 +111,7 @@ pub enum Filter {
     World,
     Main,
     Community,
+    Tui,
 }
 
 impl Filter {
@@ -120,6 +123,7 @@ impl Filter {
             Filter::World => pkg.installed && pkg.explicit,
             Filter::Main => pkg.repo == Repo::Main,
             Filter::Community => pkg.repo == Repo::Community,
+            Filter::Tui => pkg.tui,
         }
     }
 
@@ -131,6 +135,7 @@ impl Filter {
             Filter::World => "World",
             Filter::Main => "Main",
             Filter::Community => "Community",
+            Filter::Tui => "TUI",
         }
     }
 }
@@ -249,6 +254,14 @@ mod tests {
     }
 
     #[test]
+    fn filter_tui() {
+        let mut p = pkg();
+        assert!(!Filter::Tui.matches(&p));
+        p.tui = true;
+        assert!(Filter::Tui.matches(&p));
+    }
+
+    #[test]
     fn filter_labels() {
         assert_eq!(Filter::None.label(), "All");
         assert_eq!(Filter::Installed.label(), "Installed");
@@ -256,5 +269,6 @@ mod tests {
         assert_eq!(Filter::World.label(), "World");
         assert_eq!(Filter::Main.label(), "Main");
         assert_eq!(Filter::Community.label(), "Community");
+        assert_eq!(Filter::Tui.label(), "TUI");
     }
 }

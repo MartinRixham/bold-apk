@@ -214,6 +214,7 @@ fn help_lines() -> Vec<Line<'static>> {
         key("l", "Toggle world (explicit)"),
         key("m", "Toggle main repository"),
         key("c", "Toggle community repository"),
+        key("t", "Toggle TUI applications"),
         key("s", "Cycle sort mode"),
         Line::default(),
         section("ACTIONS"),

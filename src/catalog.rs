@@ -6,6 +6,7 @@ use anyhow::Result;
 use serde::Deserialize;
 
 use crate::models::{Package, Repo};
+use crate::tui;
 
 /// One package record as emitted by `apk query --format json`.
 #[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
@@ -64,6 +65,7 @@ pub fn merge(
             installed: installed_version.is_some(),
             upgradable: upgradable.contains(&record.name),
             explicit: world.contains(record.name.as_str()),
+            tui: tui::is_tui(&record.name, &record.description),
             installed_version,
             name: record.name,
             version: record.version,
@@ -174,6 +176,16 @@ mod tests {
         assert_eq!(p.installed_version, None);
         assert!(!p.upgradable);
         assert!(!p.explicit);
+        assert!(!p.tui);
+    }
+
+    #[test]
+    fn merge_detects_tuis() {
+        let mut r = rec("lazygit", "1", MAIN);
+        r.description = "Simple terminal UI for git commands".into();
+        let pkgs = merge(vec![r, rec("curl", "1", MAIN)], vec![], &HashSet::new(), &[]);
+        assert!(pkgs[1].tui);
+        assert!(!pkgs[0].tui);
     }
 
     #[test]

@@ -300,6 +300,7 @@ impl App {
             KeyCode::Char('l') => self.toggle_filter(Filter::World),
             KeyCode::Char('m') => self.toggle_filter(Filter::Main),
             KeyCode::Char('c') => self.toggle_filter(Filter::Community),
+            KeyCode::Char('t') => self.toggle_filter(Filter::Tui),
             KeyCode::Char('s') => {
                 self.sort = self.sort.next();
                 self.refresh(false);
@@ -571,6 +572,18 @@ mod tests {
         a.handle_key(ch('m'));
         assert_eq!(a.filter, Filter::Main);
         assert_eq!(names(&a), vec!["curl", "bash", "git"]);
+    }
+
+    #[test]
+    fn tui_filter_key() {
+        let mut packages = sample();
+        packages[2].tui = true;
+        let mut a = App::new(packages);
+        a.handle_key(ch('t'));
+        assert_eq!((a.filter, names(&a)), (Filter::Tui, vec!["zsh".to_string()]));
+        assert_eq!(a.search_label(), "Search (TUI): ");
+        a.handle_key(ch('t'));
+        assert_eq!(a.filter, Filter::None);
     }
 
     #[test]
