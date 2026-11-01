@@ -23,6 +23,14 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
+      - name: Check tag matches Cargo.toml version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          crate_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "bapk") | .version')
+          if [ "v${crate_version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${crate_version}"
+            exit 1
+          fi
       - name: Formatting
         run: cargo fmt --all --check
       - name: Clippy
@@ -96,13 +104,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Check tag matches Cargo.toml version
-        run: |
-          crate_version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-          if [ "v${crate_version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${crate_version}"
-            exit 1
-          fi
       - uses: actions/download-artifact@v4
         with:
           path: dist
